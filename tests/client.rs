@@ -52,6 +52,52 @@ fn booking() -> Value {
     })
 }
 
+fn claim_valuation() -> Value {
+    json!({
+        "id": "clm_1001:2026-08-28T10:00:00Z",
+        "object": "claim_valuation",
+        "claim_id": "clm_1001",
+        "valuation_at": "2026-08-28T10:00:00Z",
+        "currency": "KES",
+        "status": "approved",
+        "amount": {
+            "billed": 350_000,
+            "payer_liability": 300_000,
+            "patient_responsibility": 50_000,
+            "adjustment": 0,
+            "remitted": 300_000,
+            "settled": 300_000,
+            "outstanding": 0
+        },
+        "policy": {
+            "reference": "pol_care_v1",
+            "version": "1.0"
+        },
+        "events": [
+            {
+                "sequence": 1,
+                "type": "submitted",
+                "effective_at": "2026-08-28T08:00:00Z",
+                "recorded_at": "2026-08-28T08:00:05Z",
+                "previous_status": "draft",
+                "next_status": "submitted",
+                "reason_code": null,
+                "evidence_references": []
+            },
+            {
+                "sequence": 2,
+                "type": "approved",
+                "effective_at": "2026-08-28T09:30:00Z",
+                "recorded_at": "2026-08-28T09:30:02Z",
+                "previous_status": "submitted",
+                "next_status": "approved",
+                "reason_code": "covered_benefit",
+                "evidence_references": ["doc_eval_001"]
+            }
+        ]
+    })
+}
+
 #[tokio::test]
 async fn sends_server_side_auth_and_pagination() {
     let server = MockServer::start().await;
@@ -215,6 +261,41 @@ fn serializes_contract_enums_exactly() {
     assert_eq!(
         serde_json::to_value(denied).expect("decision")["outcome"],
         "denied"
+    );
+}
+
+#[tokio::test]
+async fn reproduces_claim_valuation_at_explicit_cutoff() {
+    let server = MockServer::start().await;
+    Mock::given(method("GET"))
+        .and(path("/v1/claims/clm_1001/valuation"))
+        .and(query_param("valuation_at", "2026-08-28T10:00:00Z"))
+        .and(header("authorization", "Bearer sk_test_not_a_real_key"))
+        .and(header("accept", "application/json"))
+        .respond_with(ResponseTemplate::new(200).set_body_json(claim_valuation()))
+        .expect(1)
+        .mount(&server)
+        .await;
+
+    let valuation = test_client(&server)
+        .claims()
+        .valuation("clm_1001", "2026-08-28T10:00:00Z")
+        .await
+        .expect("claim valuation");
+
+    assert_eq!(valuation.id, "clm_1001:2026-08-28T10:00:00Z");
+    assert_eq!(valuation.claim_id, "clm_1001");
+    assert_eq!(valuation.status, heyrafiki::ClaimStatus::Approved);
+    assert_eq!(valuation.amount.billed, 350_000);
+    assert_eq!(valuation.amount.settled, 300_000);
+    assert_eq!(valuation.events.len(), 2);
+    assert_eq!(
+        valuation.events[0].event_type,
+        heyrafiki::ClaimValuationEventType::Submitted
+    );
+    assert_eq!(
+        valuation.events[1].event_type,
+        heyrafiki::ClaimValuationEventType::Approved
     );
 }
 

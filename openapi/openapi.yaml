@@ -10,6 +10,15 @@ info:
   license:
     name: Apache 2.0
     identifier: Apache-2.0
+externalDocs:
+  description: Heyrafiki Developer Docs
+  url: https://docs.heyrafiki.space/
+x-heyrafiki-versioning:
+  currentVersion: v1
+  strategy: url-path
+  policy: https://docs.heyrafiki.space/versioning
+  deprecationHeader: Deprecation
+  sunsetHeader: Sunset
 servers:
   - url: https://api.heyrafiki.space/v1
 security:
@@ -714,6 +723,46 @@ paths:
             application/json:
               schema:
                 $ref: "#/components/schemas/Claim"
+        "400":
+          $ref: "#/components/responses/BadRequest"
+        "401":
+          $ref: "#/components/responses/Unauthorized"
+        "403":
+          $ref: "#/components/responses/Forbidden"
+        "404":
+          $ref: "#/components/responses/NotFound"
+        "429":
+          $ref: "#/components/responses/TooManyRequests"
+        "503":
+          $ref: "#/components/responses/ServiceUnavailable"
+  /claims/{claim_id}/valuation:
+    get:
+      operationId: getClaimValuation
+      summary: Reproduce a Claim valuation
+      description: Returns the synthetic Claim state and financial amounts known at an explicit cutoff. Both business time and knowledge time must fall on or before `valuation_at`. Requires `claims:read`.
+      parameters:
+        - $ref: "#/components/parameters/ClaimId"
+        - name: valuation_at
+          in: query
+          required: true
+          description: Inclusive ISO 8601 cutoff for business time and system knowledge time.
+          schema:
+            type: string
+            format: date-time
+      responses:
+        "200":
+          description: A reproducible Claim valuation
+          headers:
+            X-RateLimit-Limit:
+              $ref: "#/components/headers/RateLimitLimit"
+            X-RateLimit-Remaining:
+              $ref: "#/components/headers/RateLimitRemaining"
+            X-RateLimit-Reset:
+              $ref: "#/components/headers/RateLimitReset"
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/ClaimValuation"
         "400":
           $ref: "#/components/responses/BadRequest"
         "401":
@@ -2103,6 +2152,111 @@ components:
         updated_at:
           type: string
           format: date-time
+    ClaimValuation:
+      type: object
+      additionalProperties: false
+      required:
+        [id, object, claim_id, valuation_at, currency, status, amount, policy, events]
+      properties:
+        id:
+          type: string
+          description: Stable composite of the Claim identifier and valuation cutoff.
+        object:
+          type: string
+          const: claim_valuation
+        claim_id:
+          type: string
+          pattern: ^clm_[A-Za-z0-9_-]+$
+        valuation_at:
+          type: string
+          format: date-time
+        currency:
+          type: string
+          pattern: ^[A-Z]{3}$
+        status:
+          type: string
+          enum:
+            [draft, submitted, queried, approved, partially_approved, denied, settled, reversed, cancelled]
+        amount:
+          type: object
+          additionalProperties: false
+          required:
+            [billed, payer_liability, patient_responsibility, adjustment, remitted, settled, outstanding]
+          properties:
+            billed:
+              type: integer
+              minimum: 0
+            payer_liability:
+              type: [integer, "null"]
+              minimum: 0
+            patient_responsibility:
+              type: [integer, "null"]
+              minimum: 0
+            adjustment:
+              type: [integer, "null"]
+              minimum: 0
+            remitted:
+              type: integer
+              minimum: 0
+              description: Payer advice known at the cutoff.
+            settled:
+              type: integer
+              minimum: 0
+              description: Independently observed money movement known at the cutoff.
+            outstanding:
+              type: [integer, "null"]
+              minimum: 0
+              description: Payer liability less independently observed settlement.
+        policy:
+          oneOf:
+            - type: object
+              additionalProperties: false
+              required: [reference, version]
+              properties:
+                reference:
+                  type: string
+                version:
+                  type: string
+            - type: "null"
+        events:
+          type: array
+          items:
+            $ref: "#/components/schemas/ClaimValuationEvent"
+    ClaimValuationEvent:
+      type: object
+      additionalProperties: false
+      required:
+        [sequence, type, effective_at, recorded_at, previous_status, next_status, reason_code, evidence_references]
+      properties:
+        sequence:
+          type: integer
+          minimum: 1
+        type:
+          type: string
+          enum:
+            [created, validated, submitted, queried, evidence_added, resubmitted, approved, partially_approved, denied, remittance_recorded, settled, reconciled, reversed, cancelled]
+        effective_at:
+          type: string
+          format: date-time
+          description: Business time when the underlying fact took effect.
+        recorded_at:
+          type: string
+          format: date-time
+          description: Knowledge time when Heyrafiki persisted the fact.
+        previous_status:
+          type: [string, "null"]
+          enum:
+            [draft, submitted, queried, approved, partially_approved, denied, settled, reversed, cancelled, null]
+        next_status:
+          type: [string, "null"]
+          enum:
+            [draft, submitted, queried, approved, partially_approved, denied, settled, reversed, cancelled, null]
+        reason_code:
+          type: [string, "null"]
+        evidence_references:
+          type: array
+          items:
+            type: string
     ClaimLine:
       type: object
       additionalProperties: false

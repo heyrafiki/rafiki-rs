@@ -34,6 +34,7 @@ pub enum ObjectType {
     Claim,
     ClaimInformationRequest,
     ClaimAdjudication,
+    ClaimValuation,
     Remittance,
     WebhookEndpoint,
     WebhookDelivery,
@@ -674,6 +675,65 @@ pub struct Claim {
 }
 
 pub type ClaimList = List<Claim>;
+
+#[derive(Debug, Clone, Copy, PartialEq, Eq, Serialize, Deserialize)]
+#[serde(rename_all = "snake_case")]
+pub enum ClaimValuationEventType {
+    Created,
+    Validated,
+    Submitted,
+    Queried,
+    EvidenceAdded,
+    Resubmitted,
+    Approved,
+    PartiallyApproved,
+    Denied,
+    RemittanceRecorded,
+    Settled,
+    Reconciled,
+    Reversed,
+    Cancelled,
+}
+
+#[derive(Debug, Clone, PartialEq, Eq, Serialize, Deserialize)]
+#[serde(deny_unknown_fields)]
+pub struct ClaimValuationAmount {
+    pub billed: i64,
+    pub payer_liability: Option<i64>,
+    pub patient_responsibility: Option<i64>,
+    pub adjustment: Option<i64>,
+    pub remitted: i64,
+    pub settled: i64,
+    pub outstanding: Option<i64>,
+}
+
+#[derive(Debug, Clone, PartialEq, Eq, Serialize, Deserialize)]
+#[serde(deny_unknown_fields)]
+pub struct ClaimValuationEvent {
+    pub sequence: i64,
+    #[serde(rename = "type")]
+    pub event_type: ClaimValuationEventType,
+    pub effective_at: String,
+    pub recorded_at: String,
+    pub previous_status: Option<ClaimStatus>,
+    pub next_status: Option<ClaimStatus>,
+    pub reason_code: Option<String>,
+    pub evidence_references: Vec<String>,
+}
+
+#[derive(Debug, Clone, PartialEq, Eq, Serialize, Deserialize)]
+#[serde(deny_unknown_fields)]
+pub struct ClaimValuation {
+    pub id: String,
+    pub object: ObjectType,
+    pub claim_id: String,
+    pub valuation_at: String,
+    pub currency: String,
+    pub status: ClaimStatus,
+    pub amount: ClaimValuationAmount,
+    pub policy: Option<PolicyReference>,
+    pub events: Vec<ClaimValuationEvent>,
+}
 
 #[derive(Debug, Clone, PartialEq, Eq, Serialize, Deserialize)]
 #[serde(deny_unknown_fields)]

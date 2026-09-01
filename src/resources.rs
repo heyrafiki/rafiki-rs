@@ -8,12 +8,12 @@ use crate::{
     error::Error,
     models::{
         ApiInformation, Booking, BookingInput, BookingList, Claim, ClaimAdjudicationInput,
-        ClaimEvidenceInput, ClaimInformationRequestInput, ClaimList, CoverageBatchInput,
-        CoverageBatchResult, CoverageObservation, CoverageObservationInput, EligibilityCheck,
-        EligibilityCheckInput, Practitioner, PractitionerAvailability, PractitionerList,
-        Preauthorization, PreauthorizationDecisionInput, PreauthorizationInput, Remittance,
-        RemittanceInput, RemittanceList, Session, SessionList, WebhookDelivery, WebhookEndpoint,
-        WebhookEndpointInput, WebhookEndpointList, WebhookEndpointWithSecret,
+        ClaimEvidenceInput, ClaimInformationRequestInput, ClaimList, ClaimValuation,
+        CoverageBatchInput, CoverageBatchResult, CoverageObservation, CoverageObservationInput,
+        EligibilityCheck, EligibilityCheckInput, Practitioner, PractitionerAvailability,
+        PractitionerList, Preauthorization, PreauthorizationDecisionInput, PreauthorizationInput,
+        Remittance, RemittanceInput, RemittanceList, Session, SessionList, WebhookDelivery,
+        WebhookEndpoint, WebhookEndpointInput, WebhookEndpointList, WebhookEndpointWithSecret,
     },
 };
 
@@ -124,6 +124,11 @@ pub const SUPPORTED_OPERATIONS: &[Operation] = &[
         operation_id: "getClaim",
         method: "GET",
         path: "/claims/{claim_id}",
+    },
+    Operation {
+        operation_id: "getClaimValuation",
+        method: "GET",
+        path: "/claims/{claim_id}/valuation",
     },
     Operation {
         operation_id: "createClaimInformationRequest",
@@ -499,6 +504,18 @@ impl Claims<'_> {
         self.client
             .get(self.client.endpoint(&["claims", claim_id])?)
             .await
+    }
+
+    /// Reproduces a Claim valuation at an explicit historical cutoff.
+    pub async fn valuation(
+        &self,
+        claim_id: &str,
+        valuation_at: &str,
+    ) -> Result<ClaimValuation, Error> {
+        let mut url = self.client.endpoint(&["claims", claim_id, "valuation"])?;
+        url.query_pairs_mut()
+            .append_pair("valuation_at", valuation_at);
+        self.client.get(url).await
     }
 
     /// Creates an information request for a Claim.

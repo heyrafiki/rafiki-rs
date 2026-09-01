@@ -6,7 +6,7 @@ use heyrafiki::SUPPORTED_OPERATIONS;
 use serde_yaml_ng::{Mapping, Value};
 use sha2::{Digest, Sha256};
 
-const CONTRACT_SHA256: &str = "d1c7349246e766aaf961e11c591a32de0afcc5900649be462e3656059722b211";
+const CONTRACT_SHA256: &str = "2a5b97d098afaa2a0094939a40ec2157246d52b3e29975b88ceabe82b1f88b97";
 
 #[test]
 fn pinned_contract_has_expected_digest() {
@@ -54,7 +54,7 @@ fn sdk_operation_matrix_matches_every_published_operation() {
         .collect::<BTreeSet<_>>();
 
     assert_eq!(implemented, published);
-    assert_eq!(implemented.len(), 30);
+    assert_eq!(implemented.len(), 31);
 }
 
 fn mapping_field<'a>(mapping: &'a Mapping, field: &str) -> &'a Mapping {

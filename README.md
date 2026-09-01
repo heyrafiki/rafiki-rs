@@ -78,6 +78,27 @@ let booking = client
 
 Amounts use the currency's minor unit.
 
+## Claim valuation
+
+Reproduce historical claim valuation state and financial amounts at an explicit point in business and knowledge time:
+
+```rust,no_run
+use heyrafiki::Client;
+
+# async fn run(client: &Client) -> Result<(), heyrafiki::Error> {
+let valuation = client
+    .claims()
+    .valuation("clm_1001", "2026-08-28T10:00:00Z")
+    .await?;
+
+println!(
+    "status: {:?}, billed: {}, settled: {}",
+    valuation.status, valuation.amount.billed, valuation.amount.settled
+);
+# Ok(())
+# }
+```
+
 ## Errors
 
 ```rust,no_run
